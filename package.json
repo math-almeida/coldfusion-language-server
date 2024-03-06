@@ -1,0 +1,27 @@
+{
+  "name": "coldfusion-language-server",
+  "version": "0.0.0",
+  "scripts": {
+    "res:build": "rescript",
+    "res:clean": "rescript clean",
+    "res:dev": "rescript -w"
+  },
+  "keywords": [
+    "rescript"
+  ],
+  "activationEvents": [
+    "onLanguage"
+  ],
+  "main": "./lib/js/client/src/Extension.js",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@rescript/core": "1.1.0",
+    "rescript": "11.0.1",
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1"
+  }
+}

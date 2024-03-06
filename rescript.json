@@ -1,0 +1,23 @@
+{
+  "name": "coldfusion-language-server",
+  "sources": [
+    {
+      "dir": "server",
+      "subdirs": true
+    },
+    {
+      "dir": "client",
+      "subdirs": true
+    }
+  ],
+  "package-specs": {
+    "module": "commonjs"
+  },
+  "suffix": ".js",
+  "bs-dependencies": [
+    "@rescript/core"
+  ],
+  "bsc-flags": [
+    "-open RescriptCore"
+  ]
+}
