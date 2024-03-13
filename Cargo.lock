@@ -15,6 +15,7 @@ dependencies = [
  "completion",
  "lsp-server",
  "lsp-types",
+ "serde",
  "serde_json",
 ]
 

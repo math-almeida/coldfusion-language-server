@@ -1,5 +1,3 @@
-use completion;
-
 use std::error::Error;
 
 use lsp_server::{Connection, Message};
@@ -7,6 +5,8 @@ use lsp_types::{
     CompletionOptions, InitializeParams, ServerCapabilities, TextDocumentSyncCapability,
     TextDocumentSyncKind,
 };
+
+mod server;
 fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
     eprintln!("Starting ColdFusion Language Server...");
 
@@ -50,9 +50,9 @@ fn run(
     for msg in &connection.receiver {
         eprintln!("Received message: {:?}", msg);
         match msg {
-            Message::Request(req) => completion::handle_request(req, &connection)?,
-            Message::Response(resp) => completion::handle_response(resp)?,
-            Message::Notification(not) => completion::handle_notification(not)?,
+            Message::Request(req) => server::handle_request(req, &connection)?,
+            Message::Response(resp) => server::handle_response(resp)?,
+            Message::Notification(not) => server::handle_notification(not)?,
         }
     }
     Ok(())
