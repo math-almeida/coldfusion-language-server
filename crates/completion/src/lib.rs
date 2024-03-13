@@ -1,10 +1,8 @@
 use std::error::Error;
 
-use lsp_server::{Connection, ExtractError, Message, Notification, Request, Response};
+use lsp_server::{Connection, ExtractError, Message, Notification, Request, RequestId, Response};
 
 use lsp_types::{request::Completion, CompletionItem, CompletionItemKind, CompletionParams};
-
-use super::cast;
 
 pub fn handle_request(
     req: Request,
@@ -47,4 +45,12 @@ pub fn handle_completion(_params: CompletionParams) -> Vec<CompletionItem> {
         ..Default::default()
     });
     items
+}
+
+fn cast<R>(req: Request) -> Result<(RequestId, R::Params), ExtractError<Request>>
+where
+    R: lsp_types::request::Request,
+    R::Params: serde::de::DeserializeOwned,
+{
+    req.extract(R::METHOD)
 }

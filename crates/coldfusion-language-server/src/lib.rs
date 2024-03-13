@@ -1,8 +1,8 @@
-mod server;
+use completion;
 
 use std::error::Error;
 
-use lsp_server::{Connection, ExtractError, Message, Request, RequestId};
+use lsp_server::{Connection, Message};
 use lsp_types::{
     CompletionOptions, InitializeParams, ServerCapabilities, TextDocumentSyncCapability,
     TextDocumentSyncKind,
@@ -50,18 +50,11 @@ fn run(
     for msg in &connection.receiver {
         eprintln!("Received message: {:?}", msg);
         match msg {
-            Message::Request(req) => server::handle_request(req, &connection)?,
-            Message::Response(resp) => server::handle_response(resp)?,
-            Message::Notification(not) => server::handle_notification(not)?,
+            Message::Request(req) => completion::handle_request(req, &connection)?,
+            Message::Response(resp) => completion::handle_response(resp)?,
+            Message::Notification(not) => completion::handle_notification(not)?,
         }
     }
     Ok(())
 }
 
-fn cast<R>(req: Request) -> Result<(RequestId, R::Params), ExtractError<Request>>
-where
-    R: lsp_types::request::Request,
-    R::Params: serde::de::DeserializeOwned,
-{
-    req.extract(R::METHOD)
-}
