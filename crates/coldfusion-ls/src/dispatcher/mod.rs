@@ -54,7 +54,7 @@ pub(crate) fn on_sync_mut<R>(
         R::Params: DeserializeOwned + panic::UnwindSafe + fmt::Debug,
         R::Result: Serialize,
     {
-        let (req, params, panic_context) = match self.parse::<R>() {
+        let (req, params, _panic_context) = match self.parse::<R>() {
             Some(it) => it,
             None => return self,
         };

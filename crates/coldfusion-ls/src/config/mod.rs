@@ -152,7 +152,7 @@ mod tests {
             "detachedFiles": ["/tmp/box.json"]
         });
         let result = config.update(json);
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
         assert_eq!(config.detached_files.len(), 1);
     }
 }

@@ -2,8 +2,8 @@ use crate::global_state::{GlobalState};
 use lsp_types::{CompletionItemKind, CompletionParams};
 
 pub fn handle_completion(
-    snap: &mut GlobalState,
-    params: CompletionParams,
+    _snap: &mut GlobalState,
+    _params: CompletionParams,
 ) -> anyhow::Result<Option<lsp_types::CompletionResponse>> {
     let completion_list = lsp_types::CompletionList {
         is_incomplete: false,

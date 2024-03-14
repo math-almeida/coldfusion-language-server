@@ -164,7 +164,7 @@ impl GlobalState {
             }
         }
 
-        let event_duration = loop_start.elapsed();
+        let _event_duration = loop_start.elapsed();
         Ok(())
     }
 
