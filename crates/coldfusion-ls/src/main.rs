@@ -1,11 +1,10 @@
-use crossbeam_channel::{Receiver, select};
+use crossbeam_channel::{select, Receiver};
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, Response};
 use lsp_types::{
-    CompletionOptions, ServerCapabilities, TextDocumentSyncCapability,
-    TextDocumentSyncKind,
+    CompletionOptions, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
 };
-use std::time::Instant;
 use serde::de::DeserializeOwned;
+use std::time::Instant;
 
 mod config;
 use config::Config;
@@ -58,23 +57,30 @@ fn main() -> anyhow::Result<()> {
                 .iter()
                 .filter_map(|it| it.uri.to_file_path().ok())
                 .collect::<Vec<_>>()
-        }).filter(|it| !it.is_empty())
-    .unwrap_or_else(|| vec![root_path.clone()]);
+        })
+        .filter(|it| !it.is_empty())
+        .unwrap_or_else(|| vec![root_path.clone()]);
 
     let mut config = Config::new(root_path, capabilities, workspace_roots);
 
     if let Some(json) = initialization_options {
         if let Err(e) = config.update(json) {
             use lsp_types::{
-               notification::{Notification, ShowMessage},
-               MessageType, ShowMessageParams
+                notification::{Notification, ShowMessage},
+                MessageType, ShowMessageParams,
             };
 
-            let notification = lsp_server::Notification::new(ShowMessage::METHOD.to_owned(), ShowMessageParams {
-                typ: MessageType::WARNING,
-                message: format!("Failed to update configuration: {:?}", e),
-            });
-            connection.sender.send(Message::Notification(notification)).unwrap();
+            let notification = lsp_server::Notification::new(
+                ShowMessage::METHOD.to_owned(),
+                ShowMessageParams {
+                    typ: MessageType::WARNING,
+                    message: format!("Failed to update configuration: {:?}", e),
+                },
+            );
+            connection
+                .sender
+                .send(Message::Notification(notification))
+                .unwrap();
         }
     }
 
@@ -92,12 +98,10 @@ fn main() -> anyhow::Result<()> {
 
     let initialize_result = lsp_types::InitializeResult {
         capabilities: server_capabilities,
-        server_info: Some(
-            lsp_types::ServerInfo {
-                name: "ColdFusion Language Server".to_string(),
-                version: Some("0.1.0".to_string()),
-            }
-        ),
+        server_info: Some(lsp_types::ServerInfo {
+            name: "ColdFusion Language Server".to_string(),
+            version: Some("0.1.0".to_string()),
+        }),
     };
 
     let initialize_result = serde_json::to_value(initialize_result).unwrap();
@@ -115,12 +119,8 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn run(
-    config: Config,
-    connection: Connection,
-) -> anyhow::Result<()> {
+fn run(config: Config, connection: Connection) -> anyhow::Result<()> {
     #[cfg(windows)]
-
     unsafe {
         use winapi::um::processthreadsapi::*;
         let thread = GetCurrentThread();
@@ -140,7 +140,7 @@ impl GlobalState {
                 if method == "exit"
             ) {
                 return Ok(());
-                }
+            }
 
             self.handle_event(event)?;
         }
@@ -161,7 +161,7 @@ impl GlobalState {
                 Message::Request(req) => self.on_new_request(loop_start, req),
                 Message::Notification(notification) => self.on_notification(notification)?,
                 Message::Response(resp) => self.complete_request(resp),
-            }
+            },
         }
 
         let _event_duration = loop_start.elapsed();
@@ -185,19 +185,26 @@ impl GlobalState {
         });
 
         match &mut dispatcher {
-            RequestDispatcher { req: Some(req), global_state: this } if this.shutdown_requested => {
+            RequestDispatcher {
+                req: Some(req),
+                global_state: this,
+            } if this.shutdown_requested => {
                 let invalid_request = ErrorCode::InvalidRequest as i32;
-                this.respond(Response::new_err(req.id.clone(), invalid_request, "Shutdown already requested".to_owned()));
+                this.respond(Response::new_err(
+                    req.id.clone(),
+                    invalid_request,
+                    "Shutdown already requested".to_owned(),
+                ));
             }
-            _ => ()
+            _ => (),
         };
 
         use handlers::request as handlers;
         use lsp_types::request as lsp_request;
 
-        dispatcher.on_sync_mut::<lsp_request::Completion>(handlers::handle_completion)
-        .finish();
-
+        dispatcher
+            .on_sync_mut::<lsp_request::Completion>(handlers::handle_completion)
+            .finish();
     }
 
     fn on_notification(&mut self, notification: Notification) -> anyhow::Result<()> {
@@ -209,8 +216,12 @@ impl GlobalState {
             global_state: self,
         };
 
-        dispatcher.on_sync_mut::<notifs::Cancel>(handlers::handle_cancel)?
-        .finish();
+        dispatcher
+            .on_sync_mut::<notifs::Cancel>(handlers::handle_cancel)?
+            .on_sync_mut::<notifs::DidOpenTextDocument>(handlers::handle_did_open_text_document)?
+            .on_sync_mut::<notifs::DidCloseTextDocument>(handlers::handle_did_close_text_document)?
+			.on_sync_mut::<notifs::DidChangeTextDocument>(handlers::handle_did_change_text_document)?
+            .finish();
         Ok(())
     }
 }
@@ -219,12 +230,6 @@ pub fn from_json<T: DeserializeOwned>(
     what: &'static str,
     json: &serde_json::Value,
 ) -> anyhow::Result<T> {
-    serde_json::from_value(json.clone()).map_err(|e| {
-        anyhow::anyhow!(
-            "Failed to deserialize {} from JSON: {}\n{}",
-            what,
-            e,
-            json
-        )
-    })
+    serde_json::from_value(json.clone())
+        .map_err(|e| anyhow::anyhow!("Failed to deserialize {} from JSON: {}\n{}", what, e, json))
 }
