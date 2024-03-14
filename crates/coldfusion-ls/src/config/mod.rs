@@ -16,7 +16,7 @@ pub struct ConfigError {
     errors: Vec<(String, serde_json::Error)>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Config {
     root_path: PathBuf,
     capabilities: lsp_types::ClientCapabilities,
@@ -65,8 +65,6 @@ fn get_field<T: DeserializeOwned>(
     alias: Option<&'static str>,
     default: &str,
 ) -> T {
-    // XXX: check alias first, to work around the VS Code where it pre-fills the
-    // defaults instead of sending an empty object.
     alias
         .into_iter()
         .chain(iter::once(field))
@@ -154,5 +152,30 @@ mod tests {
         let result = config.update(json);
         assert!(result.is_ok());
         assert_eq!(config.detached_files.len(), 1);
+    }
+
+    #[test]
+    fn test_config_update_error() {
+        let mut config = Config::new(
+            PathBuf::from("/tmp"),
+            lsp_types::ClientCapabilities::default(),
+            vec![PathBuf::from("/tmp")],
+        );
+        let json = serde_json::json!({
+            "detachedFiles": ["/tmp/box.json"]
+        });
+        let result = config.update(json);
+        assert!(result.is_ok());
+        assert_eq!(config.detached_files.len(), 1);
+    }
+
+    #[test]
+    fn test_get_field() {
+        let mut json = serde_json::json!({
+            "detachedFiles": ["/tmp/box.json"]
+        });
+        let mut errors = Vec::new();
+        let result: Vec<PathBuf> = get_field(&mut json, &mut errors, "detachedFiles", None, "[]");
+        assert_eq!(result.len(), 1);
     }
 }

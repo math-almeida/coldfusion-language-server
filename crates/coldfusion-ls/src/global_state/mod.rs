@@ -73,4 +73,3 @@ impl GlobalState {
         handler(self, response);
     }
 }
-
