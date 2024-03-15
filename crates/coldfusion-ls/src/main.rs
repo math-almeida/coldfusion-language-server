@@ -4,7 +4,10 @@ use lsp_types::{
     CompletionOptions, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
 };
 use serde::de::DeserializeOwned;
+use std::path::PathBuf;
 use std::time::Instant;
+
+use virtual_fs::AbsPathBuf;
 
 mod config;
 use config::Config;
@@ -47,15 +50,25 @@ fn main() -> anyhow::Result<()> {
         ..
     } = from_json::<lsp_types::InitializeParams>("InitializeParams", &initialize_params)?;
 
-    let root_path = root_uri
+    let root_path = match root_uri
         .and_then(|it| it.to_file_path().ok())
-        .unwrap_or_else(|| std::env::current_dir().unwrap());
+        .map(patch_path_prefix)
+        .and_then(|it| AbsPathBuf::try_from(it).ok())
+    {
+        Some(it) => it,
+        None => {
+            let cwd = std::env::current_dir()?;
+            AbsPathBuf::assert(cwd)
+        }
+    };
 
     let workspace_roots = workspace_folders
         .map(|workspaces| {
             workspaces
-                .iter()
+                .into_iter()
                 .filter_map(|it| it.uri.to_file_path().ok())
+                .map(patch_path_prefix)
+                .filter_map(|it| AbsPathBuf::try_from(it).ok())
                 .collect::<Vec<_>>()
         })
         .filter(|it| !it.is_empty())
@@ -220,7 +233,9 @@ impl GlobalState {
             .on_sync_mut::<notifs::Cancel>(handlers::handle_cancel)?
             .on_sync_mut::<notifs::DidOpenTextDocument>(handlers::handle_did_open_text_document)?
             .on_sync_mut::<notifs::DidCloseTextDocument>(handlers::handle_did_close_text_document)?
-			.on_sync_mut::<notifs::DidChangeTextDocument>(handlers::handle_did_change_text_document)?
+            .on_sync_mut::<notifs::DidChangeTextDocument>(
+                handlers::handle_did_change_text_document,
+            )?
             .finish();
         Ok(())
     }
@@ -232,4 +247,49 @@ pub fn from_json<T: DeserializeOwned>(
 ) -> anyhow::Result<T> {
     serde_json::from_value(json.clone())
         .map_err(|e| anyhow::anyhow!("Failed to deserialize {} from JSON: {}\n{}", what, e, json))
+}
+
+fn patch_path_prefix(path: PathBuf) -> PathBuf {
+    use std::path::{Component, Prefix};
+    if cfg!(windows) {
+        // VSCode might report paths with the file drive in lowercase, but this can mess
+        // with env vars set by tools and build scripts executed by r-a such that it invalidates
+        // cargo's compilations unnecessarily. https://github.com/rust-lang/rust-analyzer/issues/14683
+        // So we just uppercase the drive letter here unconditionally.
+        // (doing it conditionally is a pain because std::path::Prefix always reports uppercase letters on windows)
+        let mut comps = path.components();
+        match comps.next() {
+            Some(Component::Prefix(prefix)) => {
+                let prefix = match prefix.kind() {
+                    Prefix::Disk(d) => {
+                        format!("{}:", d.to_ascii_uppercase() as char)
+                    }
+                    Prefix::VerbatimDisk(d) => {
+                        format!(r"\\?\{}:", d.to_ascii_uppercase() as char)
+                    }
+                    _ => return path,
+                };
+                let mut path = PathBuf::new();
+                path.push(prefix);
+                path.extend(comps);
+                path
+            }
+            _ => path,
+        }
+    } else {
+        path
+    }
+}
+
+#[test]
+#[cfg(windows)]
+fn patch_path_prefix_works() {
+    assert_eq!(
+        patch_path_prefix(r"c:\foo\bar".into()),
+        PathBuf::from(r"C:\foo\bar")
+    );
+    assert_eq!(
+        patch_path_prefix(r"\\?\c:\foo\bar".into()),
+        PathBuf::from(r"\\?\C:\foo\bar")
+    );
 }

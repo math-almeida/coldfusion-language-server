@@ -146,14 +146,20 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lsp_types::request::{Shutdown, Request};
     use crate::config::Config;
     use lsp_server::Request as LspRequest;
+    use lsp_types::request::{Request, Shutdown};
+    use virtual_fs::AbsPathBuf;
 
     #[test]
     fn test_request_dispatcher() {
         let (sender, _) = crossbeam_channel::unbounded();
-        let mut global_state = GlobalState::new(sender, Config::default());
+        let config = Config::new(
+            AbsPathBuf::try_from("/test").unwrap(),
+            lsp_types::ClientCapabilities::default(),
+            vec![],
+        );
+        let mut global_state = GlobalState::new(sender, config);
         let mut dispatcher = RequestDispatcher {
             req: Some(LspRequest {
                 id: lsp_server::RequestId::from(1),
@@ -171,7 +177,12 @@ mod tests {
     #[test]
     fn test_notification_dispatcher() {
         let (sender, _) = crossbeam_channel::unbounded();
-        let mut global_state = GlobalState::new(sender, Config::default());
+        let config = Config::new(
+            AbsPathBuf::try_from("/test").unwrap(),
+            lsp_types::ClientCapabilities::default(),
+            vec![],
+        );
+        let mut global_state = GlobalState::new(sender, config);
         let mut dispatcher = NotificationDispatcher {
             notification: Some(Notification {
                 method: "textDocument/didOpen".to_string(),
@@ -192,5 +203,4 @@ mod tests {
         let response = result_to_response::<Shutdown>(id, result);
         assert!(response.is_ok());
     }
-
 }
