@@ -2,7 +2,7 @@ use std::fmt;
 
 use paths::{AbsPath, AbsPathBuf, RelPath};
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
-pub struct VirtualFsPath(VirtualFsPathRepr);
+pub struct VirtualFsPath(pub VirtualFsPathRepr);
 
 impl VirtualFsPath {
     pub fn new_virtual_path(path: String) -> Self {
@@ -274,7 +274,7 @@ impl fmt::Debug for VirtualFsPathRepr {
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
-pub struct VirtualPath(String);
+pub struct VirtualPath(pub String);
 
 impl VirtualPath {
     /// Returns `true` if `other` is a prefix of `self` (as strings).

@@ -1,12 +1,12 @@
 mod anchored_path;
 mod file_id;
-use file_id::FileId;
+pub use file_id::FileId;
 mod path_interner;
 use path_interner::PathInterner;
 
 mod virtualfs_path;
-use virtualfs_path::VirtualFsPath;
 use std::{fmt, mem};
+pub use virtualfs_path::{VirtualFsPath, VirtualFsPathRepr, VirtualPath};
 
 pub use paths::AbsPathBuf;
 
