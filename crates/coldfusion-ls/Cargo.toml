@@ -19,5 +19,12 @@ anyhow = "1.0.81"
 tracing = "0.1.40"
 crossbeam-channel = "0.5.12"
 
+virtual-fs.workspace = true
+rustc-hash = "1.1.0"
+memchr = "2.7.1"
+triomphe = "0.1.11"
+nohash-hasher = "0.2.0"
+parking_lot = "0.12.1"
+
 [dev-dependencies]
 clippy = "0.0.302"

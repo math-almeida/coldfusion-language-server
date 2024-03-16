@@ -1,4 +1,4 @@
-use crate::global_state::{GlobalState};
+use crate::global_state::GlobalState;
 use lsp_types::{CompletionItemKind, CompletionParams};
 
 pub fn handle_completion(
@@ -20,18 +20,22 @@ pub fn handle_completion(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::Config;
     use lsp_types::CompletionParams;
     use lsp_types::Position;
     use lsp_types::TextDocumentIdentifier;
     use lsp_types::TextDocumentPositionParams;
     use lsp_types::Url;
     use lsp_types::WorkDoneProgressParams;
-    use crate::config::Config;
+    use virtual_fs::AbsPathBuf;
 
     #[test]
     fn test_handle_completion() {
         let (sender, _) = crossbeam_channel::unbounded();
-        let config = Config::default();
+        let root_path = AbsPathBuf::try_from("/tmp").unwrap();
+        let capabilities = lsp_types::ClientCapabilities::default();
+        let workspace_roots = vec![AbsPathBuf::try_from("/tmp").unwrap()];
+        let config = Config::new(root_path, capabilities, workspace_roots);
         let mut snap = GlobalState::new(sender, config);
         let params = CompletionParams {
             text_document_position: TextDocumentPositionParams {
@@ -45,9 +49,11 @@ mod tests {
             },
             context: None,
             work_done_progress_params: WorkDoneProgressParams {
-                work_done_token: None
+                work_done_token: None,
             },
-            partial_result_params: lsp_types::PartialResultParams { partial_result_token: None }
+            partial_result_params: lsp_types::PartialResultParams {
+                partial_result_token: None,
+            },
         };
         let result = handle_completion(&mut snap, params);
         assert!(result.is_ok());

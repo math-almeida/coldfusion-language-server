@@ -1,10 +1,10 @@
-use std::iter;
-use std::path::PathBuf;
+use std::{iter, path::PathBuf};
+use virtual_fs::AbsPathBuf;
 
 use serde::de::DeserializeOwned;
 #[derive(Debug, Clone)]
 pub struct ManifestPath {
-    file: PathBuf,
+    file: AbsPathBuf,
 }
 #[derive(Debug, Clone)]
 pub enum ProjectManifest {
@@ -16,19 +16,19 @@ pub struct ConfigError {
     errors: Vec<(String, serde_json::Error)>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Config {
-    root_path: PathBuf,
+    root_path: AbsPathBuf,
     capabilities: lsp_types::ClientCapabilities,
-    workspace_roots: Vec<PathBuf>,
-    detached_files: Vec<PathBuf>,
+    workspace_roots: Vec<AbsPathBuf>,
+    detached_files: Vec<AbsPathBuf>,
     discovered_projects: Vec<ProjectManifest>,
 }
 impl Config {
     pub fn new(
-        root_path: PathBuf,
+        root_path: AbsPathBuf,
         capabilities: lsp_types::ClientCapabilities,
-        workspace_roots: Vec<PathBuf>,
+        workspace_roots: Vec<AbsPathBuf>,
     ) -> Self {
         Config {
             root_path,
@@ -48,6 +48,7 @@ impl Config {
         self.detached_files =
             get_field::<Vec<PathBuf>>(&mut json, &mut errors, "detachedFiles", None, "[]")
                 .into_iter()
+                .map(AbsPathBuf::assert)
                 .collect();
 
         if errors.is_empty() {
@@ -93,9 +94,9 @@ mod tests {
     use super::*;
     #[test]
     fn test_config_new() {
-        let root_path = PathBuf::from("/tmp");
+        let root_path = AbsPathBuf::try_from("/tmp").unwrap();
         let capabilities = lsp_types::ClientCapabilities::default();
-        let workspace_roots = vec![PathBuf::from("/tmp")];
+        let workspace_roots = vec![AbsPathBuf::try_from("/tmp").unwrap()];
         let config = Config::new(
             root_path.clone(),
             capabilities.clone(),
@@ -108,14 +109,14 @@ mod tests {
 
     #[test]
     fn test_manifest_path() {
-        let file = PathBuf::from("/tmp/box.json");
+        let file = AbsPathBuf::try_from("/tmp/box.json").unwrap();
         let manifest_path = ManifestPath { file: file.clone() };
         assert_eq!(manifest_path.file, file);
     }
 
     #[test]
     fn test_project_manifest() {
-        let file = PathBuf::from("/tmp/box.json");
+        let file = AbsPathBuf::try_from("/tmp/box.json").unwrap();
         let manifest_path = ManifestPath { file: file.clone() };
         let project_manifest = ProjectManifest::BoxJson(manifest_path);
         match project_manifest {
@@ -127,13 +128,13 @@ mod tests {
 
     #[test]
     fn test_config_discovered_projects() {
-        let file = PathBuf::from("/tmp/box.json");
+        let file = AbsPathBuf::try_from("/tmp/box.json").unwrap();
         let manifest_path = ManifestPath { file: file.clone() };
         let project_manifest = ProjectManifest::BoxJson(manifest_path);
         let mut config = Config::new(
-            PathBuf::from("/tmp"),
+            AbsPathBuf::try_from("/tmp").unwrap(),
             lsp_types::ClientCapabilities::default(),
-            vec![PathBuf::from("/tmp")],
+            vec![AbsPathBuf::try_from("/tmp").unwrap()],
         );
         config.discovered_projects.push(project_manifest);
         assert_eq!(config.discovered_projects.len(), 1);
@@ -142,9 +143,9 @@ mod tests {
     #[test]
     fn test_config_update() {
         let mut config = Config::new(
-            PathBuf::from("/tmp"),
+            AbsPathBuf::try_from("/tmp").unwrap(),
             lsp_types::ClientCapabilities::default(),
-            vec![PathBuf::from("/tmp")],
+            vec![AbsPathBuf::try_from("/tmp").unwrap()],
         );
         let json = serde_json::json!({
             "detachedFiles": ["/tmp/box.json"]
@@ -157,9 +158,9 @@ mod tests {
     #[test]
     fn test_config_update_error() {
         let mut config = Config::new(
-            PathBuf::from("/tmp"),
+            AbsPathBuf::try_from("/tmp").unwrap(),
             lsp_types::ClientCapabilities::default(),
-            vec![PathBuf::from("/tmp")],
+            vec![AbsPathBuf::try_from("/tmp").unwrap()],
         );
         let json = serde_json::json!({
             "detachedFiles": ["/tmp/box.json"]
@@ -175,7 +176,8 @@ mod tests {
             "detachedFiles": ["/tmp/box.json"]
         });
         let mut errors = Vec::new();
-        let result: Vec<PathBuf> = get_field(&mut json, &mut errors, "detachedFiles", None, "[]");
+        let result: Vec<PathBuf> =
+            get_field::<Vec<PathBuf>>(&mut json, &mut errors, "detachedFiles", None, "[]");
         assert_eq!(result.len(), 1);
     }
 }
